@@ -49786,21 +49786,48 @@ exports.pushBuildInformationFromInputs = void 0;
 const core_1 = __nccwpck_require__(7484);
 const github_1 = __nccwpck_require__(3228);
 const api_client_1 = __nccwpck_require__(1212);
+const node_child_process_1 = __nccwpck_require__(1421);
+function getGitTags() {
+    const tags = (0, node_child_process_1.execSync)('git tag --sort=-v:refname', { encoding: 'utf-8' });
+    return tags.trim().split('\n');
+}
+function getGitCommits(from, to) {
+    const logFormat = `--pretty=format:{\\"hash\\":\\"%H\\",\\"author\\":\\"%an\\",\\"date\\":\\"%ad\\",\\"message\\":\\"%s\\"},`;
+    const rawLog = (0, node_child_process_1.execSync)(`git log ${from}..${to} ${logFormat}`, { encoding: 'utf-8' });
+    const json = `[${rawLog.replace(/,\s*$/, '')}]`;
+    return JSON.parse(json);
+}
+function getOctopusBuildInformationCommits(version) {
+    const versionTag = `v${version}`;
+    const tags = getGitTags();
+    const tagIndex = tags.indexOf(versionTag);
+    if (tagIndex === -1) {
+        throw new Error(`Tag ${version} not found in the repository.`);
+    }
+    const previousTag = tags[tagIndex + 1];
+    const gitCommits = getGitCommits(previousTag, versionTag);
+    return gitCommits.map(commit => {
+        return {
+            Id: commit.hash,
+            Comment: commit.message
+        };
+    });
+}
 function pushBuildInformationFromInputs(client, runId, parameters) {
-    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         let branch = parameters.branch || github_1.context.ref;
         if (branch.startsWith('refs/heads/')) {
             branch = branch.substring('refs/heads/'.length);
         }
         const repoUri = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}`;
-        const pushEvent = github_1.context.payload;
-        const commits = ((_a = pushEvent === null || pushEvent === void 0 ? void 0 : pushEvent.commits) === null || _a === void 0 ? void 0 : _a.map((commit) => {
-            return {
-                Id: commit.id,
-                Comment: commit.message
-            };
-        })) || [];
+        let commits;
+        try {
+            commits = getOctopusBuildInformationCommits(parameters.version);
+        }
+        catch (error) {
+            client.error(`Failed to retrieve commits for version ${parameters.version}`);
+            throw error;
+        }
         const packages = [];
         for (const packageId of parameters.packages) {
             packages.push({
@@ -49910,6 +49937,14 @@ module.exports = require("https");
 
 "use strict";
 module.exports = require("net");
+
+/***/ }),
+
+/***/ 1421:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:child_process");
 
 /***/ }),
 

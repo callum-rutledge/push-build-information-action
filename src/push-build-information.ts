@@ -1,6 +1,5 @@
 import { isDebug } from '@actions/core'
 import { context } from '@actions/github'
-import { Commit, PushEvent } from '@octokit/webhooks-types/schema'
 import {
   BuildInformationRepository,
   Client,
@@ -9,6 +8,49 @@ import {
   PackageIdentity
 } from '@octopusdeploy/api-client'
 import { InputParameters } from './input-parameters'
+import { execSync } from 'node:child_process'
+
+type GitCommit = {
+  hash: string
+  author: string
+  date: string
+  message: string
+}
+
+function getGitTags(): string[] {
+  const tags = execSync('git tag --sort=-v:refname', { encoding: 'utf-8' })
+  return tags.trim().split('\n')
+}
+
+function getGitCommits(from: string, to: string): GitCommit[] {
+  const logFormat = `--pretty=format:{\\"hash\\":\\"%H\\",\\"author\\":\\"%an\\",\\"date\\":\\"%ad\\",\\"message\\":\\"%s\\"},`
+  const rawLog = execSync(`git log ${from}..${to} ${logFormat}`, { encoding: 'utf-8' })
+
+  const json = `[${rawLog.replace(/,\s*$/, '')}]`
+  return JSON.parse(json)
+}
+
+function getOctopusBuildInformationCommits(version: string): IOctopusBuildInformationCommit[] {
+  const versionTag = `v${version}`
+
+  const tags = getGitTags()
+  const tagIndex = tags.indexOf(versionTag)
+
+  if (tagIndex === -1) {
+    throw new Error(`Tag ${version} not found in the repository.`)
+  }
+
+  const previousTag = tags[tagIndex + 1]
+
+  const gitCommits: GitCommit[] = getGitCommits(previousTag, versionTag)
+
+  return gitCommits.map(commit => {
+    return {
+      Id: commit.hash,
+      Comment: commit.message
+    }
+  })
+}
 
 export async function pushBuildInformationFromInputs(
   client: Client,
@@ -22,14 +64,14 @@ export async function pushBuildInformationFromInputs(
   }
 
   const repoUri = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}`
-  const pushEvent = context.payload as PushEvent | undefined
-  const commits: IOctopusBuildInformationCommit[] =
-    pushEvent?.commits?.map((commit: Commit) => {
-      return {
-        Id: commit.id,
-        Comment: commit.message
-      }
-    }) || []
+
+  let commits
+  try {
+    commits = getOctopusBuildInformationCommits(parameters.version)
+  } catch (error: unknown) {
+    client.error(`Failed to retrieve commits for version ${parameters.version}`)
+    throw error
+  }
 
   const packages: PackageIdentity[] = []
   for (const packageId of parameters.packages) {
