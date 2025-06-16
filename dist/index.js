@@ -49797,12 +49797,12 @@ function getGitCommits(from, to) {
     const json = `[${rawLog.replace(/,\s*$/, '')}]`;
     return JSON.parse(json);
 }
-function getOctopusBuildInformationCommits(version) {
+function getOctopusBuildInformationCommits(client, version) {
     const versionTag = `v${version}`;
     const tags = getGitTags();
     const tagIndex = tags.indexOf(versionTag);
     if (tagIndex === -1) {
-        throw new Error(`Tag ${version} not found in the repository.`);
+        throw new Error(`Tag ${version} not found in the repository. Found tags: ${tags.join(', ')}.`);
     }
     const previousTag = tags[tagIndex + 1];
     const gitCommits = getGitCommits(previousTag, versionTag);
@@ -49822,7 +49822,7 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
         const repoUri = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}`;
         let commits;
         try {
-            commits = getOctopusBuildInformationCommits(parameters.version);
+            commits = getOctopusBuildInformationCommits(client, parameters.version);
         }
         catch (error) {
             client.error(`Failed to retrieve commits for version ${parameters.version}`);
