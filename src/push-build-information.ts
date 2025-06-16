@@ -30,10 +30,12 @@ function getGitCommits(from: string, to: string): GitCommit[] {
   return JSON.parse(json)
 }
 
-function getOctopusBuildInformationCommits(version: string): IOctopusBuildInformationCommit[] {
+function getOctopusBuildInformationCommits(client: Client, version: string): IOctopusBuildInformationCommit[] {
   const versionTag = `v${version}`
 
   const tags = getGitTags()
+  client.info(`Found tags: ${tags.join(', ')}`)
+
   const tagIndex = tags.indexOf(versionTag)
 
   if (tagIndex === -1) {
@@ -67,7 +69,7 @@ export async function pushBuildInformationFromInputs(
 
   let commits
   try {
-    commits = getOctopusBuildInformationCommits(parameters.version)
+    commits = getOctopusBuildInformationCommits(client, parameters.version)
   } catch (error: unknown) {
     client.error(`Failed to retrieve commits for version ${parameters.version}`)
     throw error
