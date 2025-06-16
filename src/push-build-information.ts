@@ -34,12 +34,11 @@ function getOctopusBuildInformationCommits(client: Client, version: string): IOc
   const versionTag = `v${version}`
 
   const tags = getGitTags()
-  client.info(`Found tags: ${tags.join(', ')}`)
 
   const tagIndex = tags.indexOf(versionTag)
 
   if (tagIndex === -1) {
-    throw new Error(`Tag ${version} not found in the repository.`)
+    throw new Error(`Tag ${version} not found in the repository. Found tags: ${tags.join(', ')}.`)
   }
 
   const previousTag = tags[tagIndex + 1]
