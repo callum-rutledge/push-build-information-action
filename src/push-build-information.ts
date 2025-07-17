@@ -1,4 +1,3 @@
-import { isDebug } from '@actions/core'
 import { context } from '@actions/github'
 import {
   BuildInformationRepository,
@@ -30,8 +29,12 @@ function getGitCommits(from: string, to: string): GitCommit[] {
   return JSON.parse(json)
 }
 
-function getOctopusBuildInformationCommits(client: Client, version: string): IOctopusBuildInformationCommit[] {
-  const versionTag = `v${version}`
+function getOctopusBuildInformationCommits(
+  client: Client,
+  version: string,
+  tagPrefix: string
+): IOctopusBuildInformationCommit[] {
+  const versionTag = `${tagPrefix}${version}`
 
   const tags = getGitTags()
 
@@ -68,7 +71,11 @@ export async function pushBuildInformationFromInputs(
 
   let commits
   try {
-    commits = getOctopusBuildInformationCommits(client, parameters.version)
+    commits = getOctopusBuildInformationCommits(
+      client,
+      parameters.version,
+      parameters.tagPrefix ? parameters.tagPrefix : ''
+    )
   } catch (error: unknown) {
     client.error(`Failed to retrieve commits for version ${parameters.version}`)
     throw error
@@ -95,9 +102,9 @@ export async function pushBuildInformationFromInputs(
     Packages: packages
   }
 
-  if (isDebug()) {
-    client.info(`Build Information:\n${JSON.stringify(command, null, 2)}`)
-  }
+  // if (isDebug()) {
+  client.info(`Build Information:\n${JSON.stringify(command, null, 2)}`)
+  // }
 
   const repository = new BuildInformationRepository(client, parameters.space)
   await repository.push(command, parameters.overwriteMode)

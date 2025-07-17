@@ -21,6 +21,8 @@ inputs:
     description: 'The base URL hosting Octopus Deploy (i.e. "https://octopus.example.com/"). It is recommended to retrieve this value from an environment variable.'
   space:
     description: 'The name or ID of a space within which this command will be executed. If omitted, the default space will be used.'
+  tag_prefix:
+    description: 'A prefix to apply to the tags of the build information. If omitted, no prefix will be applied.'
 
 runs:
   using: 'node20'

@@ -49745,6 +49745,7 @@ function get(isRetry) {
         packages: (0, core_1.getMultilineInput)('packages', { required: true }),
         version: (0, core_1.getInput)('version', { required: true }),
         branch: (0, core_1.getInput)('branch') || undefined,
+        tagPrefix: (0, core_1.getInput)('tag_prefix') || undefined,
         overwriteMode
     };
     const errors = [];
@@ -49797,15 +49798,17 @@ function getGitCommits(from, to) {
     const json = `[${rawLog.replace(/,\s*$/, '')}]`;
     return JSON.parse(json);
 }
-function getOctopusBuildInformationCommits(client, version) {
-    const versionTag = `v${version}`;
+function getOctopusBuildInformationCommits(client, version, tagPrefix) {
+    const versionTag = `${tagPrefix}${version}`;
     const tags = getGitTags();
+    (0, core_1.info)(`Tags found: ${tags}`);
     const tagIndex = tags.indexOf(versionTag);
     if (tagIndex === -1) {
         throw new Error(`Tag ${version} not found in the repository. Found tags: ${tags.join(', ')}.`);
     }
     const previousTag = tags[tagIndex + 1];
     const gitCommits = getGitCommits(previousTag, versionTag);
+    (0, core_1.info)(`Git commits found:\n${JSON.stringify(gitCommits, null, 2)}`);
     return gitCommits.map(commit => {
         return {
             Id: commit.hash,
@@ -49822,7 +49825,7 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
         const repoUri = `${github_1.context.serverUrl}/${github_1.context.repo.owner}/${github_1.context.repo.repo}`;
         let commits;
         try {
-            commits = getOctopusBuildInformationCommits(client, parameters.version);
+            commits = getOctopusBuildInformationCommits(client, parameters.version, parameters.tagPrefix ? parameters.tagPrefix : '');
         }
         catch (error) {
             client.error(`Failed to retrieve commits for version ${parameters.version}`);
@@ -49847,9 +49850,7 @@ function pushBuildInformationFromInputs(client, runId, parameters) {
             Commits: commits,
             Packages: packages
         };
-        if ((0, core_1.isDebug)()) {
-            client.info(`Build Information:\n${JSON.stringify(command, null, 2)}`);
-        }
+        client.info(`Build Information:\n${JSON.stringify(command, null, 2)}`);
         const repository = new api_client_1.BuildInformationRepository(client, parameters.space);
         yield repository.push(command, parameters.overwriteMode);
         client.info('Successfully pushed build information to Octopus');

@@ -19,6 +19,7 @@ export interface InputParameters {
   space: string
   packages: string[]
   version: string
+  tagPrefix?: string
   branch?: string
   overwriteMode: OverwriteMode
 }
@@ -36,6 +37,7 @@ export function get(isRetry: boolean): InputParameters {
     packages: getMultilineInput('packages', { required: true }),
     version: getInput('version', { required: true }),
     branch: getInput('branch') || undefined,
+    tagPrefix: getInput('tag_prefix') || undefined,
     overwriteMode
   }
 
