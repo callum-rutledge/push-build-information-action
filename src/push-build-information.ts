@@ -31,7 +31,7 @@ function getGitCommits(from: string, to: string): GitCommit[] {
 }
 
 function getOctopusBuildInformationCommits(client: Client, version: string): IOctopusBuildInformationCommit[] {
-  const versionTag = `v${version}`
+  const versionTag = `${version}`
 
   const tags = getGitTags()
 
